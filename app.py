@@ -18,7 +18,14 @@ handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
 GOOGLE_API_KEY = os.environ.get('GOOGLE_SAFE_BROWSING_API_KEY')
 
 # ฟังก์ชันสำหรับส่งลิงก์ไปให้ Google ตรวจสอบ
+
+
+
 def check_link_with_google(url_to_check):
+
+       print(f"DEBUG: Checking URL: {url_to_check}")
+    print(f"DEBUG: Using API Key: {GOOGLE_API_KEY[:5]}...")
+
     if not GOOGLE_API_KEY:
         return "ERROR_NO_KEY"
         
