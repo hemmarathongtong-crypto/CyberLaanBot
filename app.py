@@ -2,7 +2,7 @@
 import os
 import requests
 from flask import Flask, request, abort
-from urllib.parse import urlparse
+from urllib.parse import urlparse  # เพิ่มบรรทัดนี้เพื่อดึงชื่อเว็บไซต์
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage
@@ -78,16 +78,16 @@ def handle_message(event):
             )
         elif status == "SAFE":
             reply_text = (
-                f"✅ เว็บไซต์นี้ตรวจสอบแล้วไม่พบอันตราย\n\n"
+                f"✅ เว็บไซต์นี้ตรวจสอบแล้วไม่พบประวัติอันตราย\n\n"
                 f"📌 เว็บไซต์ที่ตรวจสอบ: {domain}\n\n"
                 f"🛡️ ระบบ Google แจ้งว่าปลอดภัยในขณะนี้\n"
-                f"⚠️ แต่ถ้ามีการขอ OTP หรือให้โอนเงิน ควรตรวจสอบกับลูกหลานก่อนนะคะ\n"
+                f"⚠️ **ข้อควรระวังสำคัญ:** ต่อให้เว็บดูปลอดภัย ห้ามกรอกเลข OTP เด็ดขาดหากไม่ได้ทำรายการเอง!\n"
                 f"⭐ ระดับความน่าเชื่อถือ: สูง"
             )
         elif status == "ERROR_NO_KEY":
             reply_text = "ระบบขัดข้อง: ยังไม่ได้ตั้งค่ารหัสกุญแจ Google ในไฟล์ .env ค่ะ"
         else:
-            reply_text = "🧐 ลิงก์นี้ตรวจสอบระบบไม่ได้ชั่วคราวค่ะ แนะนำว่าถ้าไม่มั่นใจ 'อย่าเพิ่งกด' นะคะ"
+            reply_text = "🧐 ลิงก์นี้ตรวจสอบระบบไม่ได้ชั่วคราวค่ะ เพื่อความปลอดภัย ช่วงนี้ถ้าไม่มั่นใจ 'อย่าเพิ่งกด' นะคะ"
 
     # 2. เช็กคำสั่งอื่นๆ
     elif "สแกน" in msg_check or "scan" in msg_check:
@@ -103,10 +103,16 @@ def handle_message(event):
             "4. ส่งมาให้บอทสแกนก่อน\n"
             "5. ตั้งค่ารหัส 2 ชั้นค่ะ"
         )
+    elif "otp" in msg_check or "รหัส" in msg_check:
+        reply_text = (
+            "🛡️ คำแนะนำเรื่องรหัส OTP:\n\n"
+            "❌ ห้ามบอกรหัสนี้ให้ใครเด็ดขาด แม้แต่อ้างว่าเป็นเจ้าหน้าที่ธนาคาร\n"
+            "✅ ถ้ามีคนโทรมาขอรหัสนี้ ให้วางสายทันที แล้วโทรหาหลานหรือธนาคารด้วยตัวเองนะคะ!"
+        )
     else:
         reply_text = "หนูเป็นบอทช่วยสแกนลิงก์ปลอมค่ะ! ถ้าคุณตาคุณยายเจอลิงก์แปลกๆ ส่งเข้ามาได้เลย หนูจะเช็กกับ Google ให้ทันทีค่ะ"
 
-    # ส่งข้อความกลับ
+    # ส่งข้อความกลับหาผู้ใช้
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
         line_bot_api.reply_message_with_http_info(
