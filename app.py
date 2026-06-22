@@ -17,18 +17,12 @@ configuration = Configuration(access_token=os.environ['LINE_CHANNEL_ACCESS_TOKEN
 handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
 GOOGLE_API_KEY = os.environ.get('GOOGLE_SAFE_BROWSING_API_KEY')
 
-# ฟังก์ชันสำหรับส่งลิงก์ไปให้ Google ตรวจสอบ
+# ฟังก์ชันสแกนลิงก์ (อันเดิม)
 def check_link_with_google(url_to_check):
-    if not GOOGLE_API_KEY:
-        return "ERROR_NO_KEY"
-        
+    if not GOOGLE_API_KEY: return "ERROR_NO_KEY"
     api_url = f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={GOOGLE_API_KEY}"
-    
     payload = {
-        "client": {
-            "clientId": "cyberlaanbot",
-            "clientVersion": "1.0.0"
-        },
+        "client": {"clientId": "cyberlaanbot", "clientVersion": "1.0.0"},
         "threatInfo": {
             "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE", "POTENTIALLY_HARMFUL_APPLICATION"],
             "platformTypes": ["ANY_PLATFORM"],
@@ -36,36 +30,27 @@ def check_link_with_google(url_to_check):
             "threatEntries": [{"url": url_to_check}]
         }
     }
-    
     try:
         response = requests.post(api_url, json=payload, timeout=5)
         result = response.json()
-        if "matches" in result:
-            return "DANGEROUS"
-        return "SAFE"
-    except Exception as e:
-        print(f"Error checking with Google: {e}")
-        return "API_ERROR"
+        return "DANGEROUS" if "matches" in result else "SAFE"
+    except: return "API_ERROR"
 
 @app.route("/webhook", methods=['POST'])
 def callback():
     signature = request.headers.get('X-Line-Signature')
     body = request.get_data(as_text=True)
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        abort(400)
+    try: handler.handle(body, signature)
+    except InvalidSignatureError: abort(400)
     return 'OK'
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     user_message = event.message.text.strip()
     msg_check = user_message.lower()
-    reply_text = ""
-
-    # 1. เช็กลิงก์ (http หรือ https)
+    
+    # --- ส่วนที่ 1: ระบบสแกนลิงก์ ---
     if "http://" in msg_check or "https://" in msg_check:
-        # --- เพิ่มการแกะรอยลิงก์ย่อ ---
         try:
             head = requests.head(user_message, allow_redirects=True, timeout=5)
             final_url = head.url
@@ -73,64 +58,33 @@ def handle_message(event):
         except:
             final_url = user_message
             domain = urlparse(user_message).netloc
-        # ---------------------------
         
         status = check_link_with_google(final_url)
-        
         if status == "DANGEROUS":
-            reply_text = (
-                f"🚨 ตรวจพบลิงก์อันตราย!!\n\n"
-                f"📌 เว็บไซต์ปลายทางที่พบ: {domain}\n\n"
-                f"⚠️ ระบบ Google ตรวจพบว่าเป็นเว็บปลอม/มิจฉาชีพ\n"
-                f"❌ ห้ามกด ห้ามกรอกข้อมูล ห้ามโอนเงินเด็ดขาด! "
-                f"ด้วยความหวังดีจากหลานไอที"
-            )
+            reply_text = f"🚨 ตรวจพบลิงก์อันตราย!! ปลายทางคือ {domain} \n❌ ห้ามกดเด็ดขาดค่ะ"
         elif status == "SAFE":
-            reply_text = (
-                f"✅ ลิงก์นี้ตรวจสอบแล้ว (ปลายทางคือ {domain}) ไม่พบประวัติอันตราย\n\n"
-                f"⚠️ แต่ถ้ามีการขอรหัส OTP หรือให้โอนเงิน ควรตรวจสอบกับลูกหลานก่อนนะคะ!"
-            )
-        elif status == "ERROR_NO_KEY":
-            reply_text = "ระบบขัดข้อง: ยังไม่ได้ตั้งค่ารหัสกุญแจ Google ในไฟล์ .env ค่ะ"
+            reply_text = f"✅ ลิงก์ปลอดภัย (ปลายทาง {domain}) แต่ถ้าให้กรอก OTP ให้ระวังด้วยนะคะ!"
         else:
-            reply_text = (
-                "🧐 ลิงก์นี้ตรวจสอบระบบไม่ได้ชั่วคราวค่ะ...\n\n"
-                "เพื่อความปลอดภัย ช่วงนี้ถ้าไม่มั่นใจ 'อย่าเพิ่งกด' นะคะ "
-                "หรือลองส่งให้ลูกหลานช่วยดูอีกทีเพื่อความชัวร์ค่ะ"
-            )
+            reply_text = "🧐 ลิงก์นี้ตรวจสอบระบบไม่ได้ชั่วคราวค่ะ"
 
-    # 2. เช็กคำว่า "สแกน"
-    elif "สแกน" in msg_check or "scan" in msg_check:
-        reply_text = "ง่ายมากๆ เลยค่ะคุณตาคุณยาย! แค่คัดลอกลิงก์ที่สงสัย แล้วเอามา 'วาง' ส่งเข้ามาในแชทนี้ได้เลยนะคะ หลานจะรีบตรวจให้ทันทีค่ะ!"
-
-    # 3. เช็กคำว่า "สวัสดี"
-    elif "สวัสดี" in msg_check:
-        reply_text = "สวัสดีค่ะคุณตาคุณยาย! วันนี้มีลิงก์แปลกๆ ส่งมาไหมคะ? ส่งมาให้หลานช่วยสแกนก่อนได้น้า"
-
-    # 4. เช็กคำว่า "ป้องกัน"
-    elif "ป้องกัน" in msg_check:
+    # --- ส่วนที่ 2: เพิ่มฟีเจอร์ "ผู้ช่วยงานคุณครู" ---
+    elif "ร่างงาน" in msg_check or "เขียน" in msg_check:
         reply_text = (
-            "🛡️ 5 วิธีป้องกันมิจฉาชีพ:\n"
-            "1. ห้ามคลิกลิงก์แปลกๆ\n"
-            "2. ไม่เชื่อ ไม่รีบ ไม่โอน\n"
-            "3. ห้ามรีโมทมือถือ\n"
-            "4. ส่งมาให้บอทสแกนก่อน\n"
-            "5. ตั้งค่ารหัส 2 ชั้นค่ะ"
+            "📝 ครูคะ! ถ้าจะให้หลานช่วยร่างเอกสาร ให้พิมพ์รายละเอียดมาได้เลยค่ะ เช่น:\n"
+            "- 'ร่างบันทึกข้อความขออนุมัติโครงการ...'\n"
+            "- 'สรุปรายงานการประชุมเรื่อง...'\n"
+            "แล้วหลานจะเขียนข้อความให้ครู Copy ไปวางใน Word ได้เลยค่ะ!"
         )
-
-    # 5. กรณีพิมพ์คำอื่นๆ
-    else:
-        reply_text = "หนูเป็นบอทช่วยสแกนลิงก์ปลอมค่ะ! ถ้าคุณตาคุณยายเจอลิงก์แปลกๆ ส่งเข้ามาได้เลย หนูจะเช็กกับ Google ให้ทันทีค่ะ"
+    
+    # --- ส่วนที่ 3: คำสั่งอื่นๆ ---
+    elif "สแกน" in msg_check: reply_text = "ส่งลิงก์ที่สงสัยมาให้หลานตรวจได้เลยค่ะ!"
+    elif "ป้องกัน" in msg_check: reply_text = "5 วิธีป้องกัน: 1.ห้ามคลิกลิงก์แปลก 2.ไม่โอน 3.ห้ามรีโมท 4.สแกนกับบอท 5.ตั้งรหัส 2 ชั้น"
+    else: reply_text = "สวัสดีค่ะคุณครู! มีอะไรให้หลานช่วยงาน หรือเจอลิงก์แปลกๆ ส่งมาได้เลยนะคะ"
 
     # ส่งข้อความกลับ
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
-        line_bot_api.reply_message_with_http_info(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=reply_text)]
-            )
-        )
+        line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text=reply_text)]))
 
 if __name__ == "__main__":
     app.run(port=5000)
