@@ -62,8 +62,16 @@ def handle_message(event):
     msg_check = user_message.lower()
     reply_text = ""
 
-    # 1. เช็กลิงก์
-    if "http://" in msg_check or "https://" in msg_check:
+    # 1. เช็กคำสั่ง "ร่างงาน" หรือ "เขียน" ก่อน
+    if "ร่างงาน" in msg_check or "เขียน" in msg_check:
+        prompt = user_message.replace("ร่างงาน", "").replace("เขียน", "").strip()
+        if prompt:
+            reply_text = ask_ai_to_write(prompt)
+        else:
+            reply_text = "ครูคะ! พิมพ์รายละเอียดมาได้เลยค่ะว่าอยากให้ร่างเอกสารเรื่องอะไร (เช่น 'ร่างงาน บันทึกข้อความขอลาป่วย')"
+
+    # 2. เช็กลิงก์
+    elif "http://" in msg_check or "https://" in msg_check:
         try:
             head = requests.head(user_message, allow_redirects=True, timeout=5)
             final_url = head.url
@@ -76,14 +84,6 @@ def handle_message(event):
         if status == "DANGEROUS": reply_text = f"🚨 ตรวจพบลิงก์อันตราย!! ปลายทางคือ {domain} \n❌ ห้ามกดเด็ดขาดค่ะ"
         elif status == "SAFE": reply_text = f"✅ ลิงก์ปลอดภัย (ปลายทาง {domain})"
         else: reply_text = "🧐 ลิงก์นี้ตรวจสอบระบบไม่ได้ชั่วคราวค่ะ"
-
-    # 2. ฟีเจอร์ร่างงาน (เรียกใช้ Gemini)
-    elif "ร่างงาน" in msg_check or "เขียน" in msg_check:
-        prompt = user_message.replace("ร่างงาน", "").replace("เขียน", "").strip()
-        if prompt:
-            reply_text = ask_ai_to_write(prompt)
-        else:
-            reply_text = "ครูคะ! พิมพ์รายละเอียดมาได้เลยค่ะว่าอยากให้ร่างเอกสารเรื่องอะไร (เช่น 'ร่างงาน บันทึกข้อความขอลาป่วย')"
 
     # 3. คำสั่งอื่นๆ
     elif "สแกน" in msg_check: reply_text = "ส่งลิงก์ที่สงสัยมาให้หลานตรวจได้เลยค่ะ!"
