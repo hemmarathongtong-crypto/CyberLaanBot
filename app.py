@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import requests
-import openai
+import google.generativeai as genai
 from flask import Flask, request, abort
 from urllib.parse import urlparse
 from linebot.v3 import WebhookHandler
@@ -18,7 +18,7 @@ app = Flask(__name__)
 configuration = Configuration(access_token=os.environ['LINE_CHANNEL_ACCESS_TOKEN'])
 handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
 GOOGLE_API_KEY = os.environ.get('GOOGLE_SAFE_BROWSING_API_KEY')
-openai.api_key = os.environ.get('OPENAI_API_KEY')
+genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
 
 # ฟังก์ชันสแกนลิงก์
 def check_link_with_google(url_to_check):
@@ -39,15 +39,12 @@ def check_link_with_google(url_to_check):
         return "DANGEROUS" if "matches" in result else "SAFE"
     except: return "API_ERROR"
 
-# ฟังก์ชันให้ AI เขียนงาน
+# ฟังก์ชันให้ AI (Gemini) เขียนงาน
 def ask_ai_to_write(prompt):
     try:
-        client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": f"ช่วยร่างเอกสารราชการ/งานครู เรื่อง: {prompt}"}]
-        )
-        return response.choices[0].message.content
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(f"ช่วยร่างเอกสารราชการ/งานครู เรื่อง: {prompt}")
+        return response.text
     except Exception as e:
         return f"ขออภัยค่ะ หลานทำไม่ได้เนื่องจาก: {e}"
 
@@ -80,7 +77,7 @@ def handle_message(event):
         elif status == "SAFE": reply_text = f"✅ ลิงก์ปลอดภัย (ปลายทาง {domain})"
         else: reply_text = "🧐 ลิงก์นี้ตรวจสอบระบบไม่ได้ชั่วคราวค่ะ"
 
-    # 2. ฟีเจอร์ร่างงาน
+    # 2. ฟีเจอร์ร่างงาน (เรียกใช้ Gemini)
     elif "ร่างงาน" in msg_check or "เขียน" in msg_check:
         prompt = user_message.replace("ร่างงาน", "").replace("เขียน", "").strip()
         if prompt:
