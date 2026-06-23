@@ -1,4 +1,30 @@
 # -*- coding: utf-8 -*-
+# เพิ่ม openai เข้าไปที่ด้านบนสุดของไฟล์ (ต้องติดตั้ง library ด้วยการพิมพ์ pip install openai ในเครื่อง)
+import openai 
+
+# ตั้งค่า API Key
+openai.api_key = os.environ.get('OPENAI_API_KEY')
+
+# ฟังก์ชันให้ AI เขียนงานให้
+def ask_ai_to_write(prompt):
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": f"ช่วยร่างเอกสารราชการ/งานครู เรื่อง: {prompt}"}]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"ขออภัยค่ะ หลานทำไม่ได้เนื่องจาก: {e}"
+
+# ในส่วน handle_message ให้เพิ่มเงื่อนไขนี้เข้าไปครับ
+    elif "ร่างงาน" in msg_check or "เขียน" in msg_check:
+        # ตัดคำว่า "ร่างงาน" ออก เพื่อเอาเนื้อหาที่ครูต้องการไปใช้
+        prompt = user_message.replace("ร่างงาน", "").replace("เขียน", "").strip()
+        if prompt:
+            reply_text = ask_ai_to_write(prompt)
+        else:
+            reply_text = "คุณครูช่วยพิมพ์รายละเอียดมาหน่อยค่ะว่าอยากให้ร่างเอกสารเรื่องอะไร"
+
 import os
 import requests
 from flask import Flask, request, abort
