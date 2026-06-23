@@ -21,7 +21,6 @@ handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
 GOOGLE_API_KEY = os.environ.get('GOOGLE_SAFE_BROWSING_API_KEY')
 genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
 
-# --- ฟังก์ชันช่วยเหลือ ---
 def check_link_with_google(url_to_check):
     if not GOOGLE_API_KEY: return "ERROR_NO_KEY"
     api_url = f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={GOOGLE_API_KEY}"
@@ -42,13 +41,12 @@ def check_link_with_google(url_to_check):
 
 def ask_ai_to_write(prompt):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash') # ปรับรุ่นให้เหมาะสม
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(f"ช่วยร่างเอกสารราชการ/งานครู เรื่อง: {prompt}")
         return response.text
     except Exception as e:
         return f"ขออภัยค่ะ หลานทำไม่ได้เนื่องจาก: {e}"
 
-# --- Webhook ---
 @app.route("/webhook", methods=['POST'])
 def callback():
     signature = request.headers.get('X-Line-Signature')
@@ -65,7 +63,6 @@ def handle_message(event):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
 
-        # 1. ระบบสอนผู้สูงอายุ (เพิ่มใหม่)
         if "สอนปรับตัวอักษร" in msg_check:
             line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[
                 TextMessage(text="คุณครูใช้มือถือรุ่นไหนคะ เลือกได้เลยค่ะ", quick_reply=QuickReply(items=[
@@ -73,39 +70,32 @@ def handle_message(event):
                     QuickReplyButton(action=MessageAction(label="Android", text="สอน Android Part 1"))
                 ]))
             ]))
-            return
-
         elif "สอน iphone part 1" in msg_check:
             line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[
-                ImageMessage(original_content_url="https://ลิงก์รูป_iPhone_1.jpg", preview_image_url="https://ลิงก์รูป_iPhone_1.jpg"),
+                ImageMessage(original_content_url="https://i.imgur.com/example1.jpg", preview_image_url="https://drive.google.com/uc?export=download&id=1D1-99nF0BMnoZofQwaXDA7XnR47i6r67"),
                 TextMessage(text="ขั้นที่ 1-2: กดฟันเฟือง แล้วเลือก 'จอภาพและความสว่าง'", quick_reply=QuickReply(items=[
                     QuickReplyButton(action=MessageAction(label="ทำเสร็จแล้ว ไปต่อ", text="สอน iPhone Part 2"))
                 ]))
             ]))
-            return
-
         elif "สอน iphone part 2" in msg_check:
             line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[
-                ImageMessage(original_content_url="https://ลิงก์รูป_iPhone_2.jpg", preview_image_url="https://ลิงก์รูป_iPhone_2.jpg"),
+                ImageMessage(original_content_url="https://i.imgur.com/example2.jpg", preview_image_url="https://drive.google.com/uc?export=download&id=1lPs5Pfee-8a5wCbJyLGS3vbZfmZZ183D"),
                 TextMessage(text="ขั้นที่ 3-4: กด 'ขนาดข้อความ' แล้วลากจุดไปทางขวาค่ะ เก่งมากค่ะ!", quick_reply=QuickReply(items=[
                     QuickReplyButton(action=MessageAction(label="จบขั้นตอน", text="สวัสดี"))
                 ]))
             ]))
-            return
-
-        # 2. ฟังก์ชันเดิม (ร่างงาน/เช็กลิงก์)
         elif "ร่างงาน" in msg_check or "เขียน" in msg_check:
             prompt = msg.replace("ร่างงาน", "").replace("เขียน", "").strip()
             reply_text = ask_ai_to_write(prompt) if prompt else "พิมพ์รายละเอียดมาได้เลยค่ะ"
-        
+            line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text=reply_text)]))
         elif "http" in msg_check:
             status = check_link_with_google(msg)
             reply_text = "🚨 ลิงก์อันตราย!" if status == "DANGEROUS" else "✅ ลิงก์ปลอดภัย"
-        
+            line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text=reply_text)]))
         else:
-            reply_text = "สวัสดีค่ะคุณครู! อยากให้หลานช่วย 'ร่างงาน' 'สแกนลิงก์' หรือ 'สอนปรับตัวอักษร' บอกได้เลยนะคะ"
-
-        line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text=reply_text)]))
+            line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[
+                TextMessage(text="สวัสดีค่ะคุณครู! อยากให้หลานช่วย 'ร่างงาน' 'สแกนลิงก์' หรือ 'สอนปรับตัวอักษร' บอกได้เลยนะคะ")
+            ]))
 
 if __name__ == "__main__":
     app.run(port=5000)
