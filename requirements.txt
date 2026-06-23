@@ -3,4 +3,4 @@ line-bot-sdk
 requests
 python-dotenv
 gunicorn
-openai
+google-generativeai
