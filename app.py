@@ -1,32 +1,8 @@
 # -*- coding: utf-8 -*-
-# เพิ่ม openai เข้าไปที่ด้านบนสุดของไฟล์ (ต้องติดตั้ง library ด้วยการพิมพ์ pip install openai ในเครื่อง)
-import openai 
-
-# ตั้งค่า API Key
-openai.api_key = os.environ.get('OPENAI_API_KEY')
-
-# ฟังก์ชันให้ AI เขียนงานให้
-def ask_ai_to_write(prompt):
-    try:
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": f"ช่วยร่างเอกสารราชการ/งานครู เรื่อง: {prompt}"}]
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"ขออภัยค่ะ หลานทำไม่ได้เนื่องจาก: {e}"
-
-# ในส่วน handle_message ให้เพิ่มเงื่อนไขนี้เข้าไปครับ
-    elif "ร่างงาน" in msg_check or "เขียน" in msg_check:
-        # ตัดคำว่า "ร่างงาน" ออก เพื่อเอาเนื้อหาที่ครูต้องการไปใช้
-        prompt = user_message.replace("ร่างงาน", "").replace("เขียน", "").strip()
-        if prompt:
-            reply_text = ask_ai_to_write(prompt)
-        else:
-            reply_text = "คุณครูช่วยพิมพ์รายละเอียดมาหน่อยค่ะว่าอยากให้ร่างเอกสารเรื่องอะไร"
-
+# -*- coding: utf-8 -*-
 import os
 import requests
+import openai
 from flask import Flask, request, abort
 from urllib.parse import urlparse
 from linebot.v3 import WebhookHandler
@@ -39,11 +15,13 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# ตั้งค่า Configuration
 configuration = Configuration(access_token=os.environ['LINE_CHANNEL_ACCESS_TOKEN'])
 handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
 GOOGLE_API_KEY = os.environ.get('GOOGLE_SAFE_BROWSING_API_KEY')
+openai.api_key = os.environ.get('OPENAI_API_KEY')
 
-# ฟังก์ชันสแกนลิงก์ (อันเดิม)
+# ฟังก์ชันสแกนลิงก์
 def check_link_with_google(url_to_check):
     if not GOOGLE_API_KEY: return "ERROR_NO_KEY"
     api_url = f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={GOOGLE_API_KEY}"
@@ -62,6 +40,18 @@ def check_link_with_google(url_to_check):
         return "DANGEROUS" if "matches" in result else "SAFE"
     except: return "API_ERROR"
 
+# ฟังก์ชันให้ AI เขียนงาน
+def ask_ai_to_write(prompt):
+    try:
+        client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": f"ช่วยร่างเอกสารราชการ/งานครู เรื่อง: {prompt}"}]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"ขออภัยค่ะ หลานทำไม่ได้เนื่องจาก: {e}"
+
 @app.route("/webhook", methods=['POST'])
 def callback():
     signature = request.headers.get('X-Line-Signature')
@@ -74,8 +64,9 @@ def callback():
 def handle_message(event):
     user_message = event.message.text.strip()
     msg_check = user_message.lower()
-    
-    # --- ส่วนที่ 1: ระบบสแกนลิงก์ ---
+    reply_text = ""
+
+    # 1. เช็กลิงก์
     if "http://" in msg_check or "https://" in msg_check:
         try:
             head = requests.head(user_message, allow_redirects=True, timeout=5)
@@ -86,28 +77,23 @@ def handle_message(event):
             domain = urlparse(user_message).netloc
         
         status = check_link_with_google(final_url)
-        if status == "DANGEROUS":
-            reply_text = f"🚨 ตรวจพบลิงก์อันตราย!! ปลายทางคือ {domain} \n❌ ห้ามกดเด็ดขาดค่ะ"
-        elif status == "SAFE":
-            reply_text = f"✅ ลิงก์ปลอดภัย (ปลายทาง {domain}) แต่ถ้าให้กรอก OTP ให้ระวังด้วยนะคะ!"
-        else:
-            reply_text = "🧐 ลิงก์นี้ตรวจสอบระบบไม่ได้ชั่วคราวค่ะ"
+        if status == "DANGEROUS": reply_text = f"🚨 ตรวจพบลิงก์อันตราย!! ปลายทางคือ {domain} \n❌ ห้ามกดเด็ดขาดค่ะ"
+        elif status == "SAFE": reply_text = f"✅ ลิงก์ปลอดภัย (ปลายทาง {domain})"
+        else: reply_text = "🧐 ลิงก์นี้ตรวจสอบระบบไม่ได้ชั่วคราวค่ะ"
 
-    # --- ส่วนที่ 2: เพิ่มฟีเจอร์ "ผู้ช่วยงานคุณครู" ---
+    # 2. ฟีเจอร์ร่างงาน
     elif "ร่างงาน" in msg_check or "เขียน" in msg_check:
-        reply_text = (
-            "📝 ครูคะ! ถ้าจะให้หลานช่วยร่างเอกสาร ให้พิมพ์รายละเอียดมาได้เลยค่ะ เช่น:\n"
-            "- 'ร่างบันทึกข้อความขออนุมัติโครงการ...'\n"
-            "- 'สรุปรายงานการประชุมเรื่อง...'\n"
-            "แล้วหลานจะเขียนข้อความให้ครู Copy ไปวางใน Word ได้เลยค่ะ!"
-        )
-    
-    # --- ส่วนที่ 3: คำสั่งอื่นๆ ---
+        prompt = user_message.replace("ร่างงาน", "").replace("เขียน", "").strip()
+        if prompt:
+            reply_text = ask_ai_to_write(prompt)
+        else:
+            reply_text = "ครูคะ! พิมพ์รายละเอียดมาได้เลยค่ะว่าอยากให้ร่างเอกสารเรื่องอะไร (เช่น 'ร่างงาน บันทึกข้อความขอลาป่วย')"
+
+    # 3. คำสั่งอื่นๆ
     elif "สแกน" in msg_check: reply_text = "ส่งลิงก์ที่สงสัยมาให้หลานตรวจได้เลยค่ะ!"
-    elif "ป้องกัน" in msg_check: reply_text = "5 วิธีป้องกัน: 1.ห้ามคลิกลิงก์แปลก 2.ไม่โอน 3.ห้ามรีโมท 4.สแกนกับบอท 5.ตั้งรหัส 2 ชั้น"
+    elif "ป้องกัน" in msg_check: reply_text = "5 วิธีป้องกัน: 1.ห้ามคลิกลิงก์ 2.ไม่โอน 3.ห้ามรีโมท 4.สแกนกับบอท 5.ตั้งรหัส 2 ชั้น"
     else: reply_text = "สวัสดีค่ะคุณครู! มีอะไรให้หลานช่วยงาน หรือเจอลิงก์แปลกๆ ส่งมาได้เลยนะคะ"
 
-    # ส่งข้อความกลับ
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
         line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text=reply_text)]))
