@@ -42,7 +42,7 @@ def check_link_with_google(url_to_check):
 # ฟังก์ชันให้ AI (Gemini) เขียนงาน
 def ask_ai_to_write(prompt):
     try:
-        model = genai.GenerativeModel('gemini-1.0-pro')
+        model = genai.GenerativeModel('gemini-3.5-flash')
         response = model.generate_content(f"ช่วยร่างเอกสารราชการ/งานครู เรื่อง: {prompt}")
         return response.text
     except Exception as e:
