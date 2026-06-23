@@ -18,7 +18,7 @@ app = Flask(__name__)
 configuration = Configuration(access_token=os.environ['LINE_CHANNEL_ACCESS_TOKEN'])
 handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
 GOOGLE_API_KEY = os.environ.get('GOOGLE_SAFE_BROWSING_API_KEY')
-genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+genai.configure(api_key=os.environ.get('GOOGLE_API_KEY'))
 
 # ฟังก์ชันสแกนลิงก์
 def check_link_with_google(url_to_check):
@@ -42,7 +42,7 @@ def check_link_with_google(url_to_check):
 # ฟังก์ชันให้ AI (Gemini) เขียนงาน
 def ask_ai_to_write(prompt):
     try:
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(f"ช่วยร่างเอกสารราชการ/งานครู เรื่อง: {prompt}")
         return response.text
     except Exception as e:
