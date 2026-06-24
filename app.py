@@ -6,9 +6,11 @@ from flask import Flask, request, abort
 from urllib.parse import urlparse
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage
-# แก้ไขการ Import มาจาก models โดยตรงเพื่อป้องกัน ImportError
-from linebot.v3.messaging.models import QuickReply, QuickReplyButton, MessageAction
+# รวมการ Import ทุกอย่างจาก linebot.v3.messaging เพื่อป้องกัน ImportError
+from linebot.v3.messaging import (
+    Configuration, ApiClient, MessagingApi, ReplyMessageRequest, 
+    TextMessage, QuickReply, QuickReplyButton, MessageAction
+)
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from dotenv import load_dotenv
 
