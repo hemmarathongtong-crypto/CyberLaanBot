@@ -5,9 +5,12 @@ import google.generativeai as genai
 from flask import Flask, request, abort
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage
-# นำเข้าจาก linebot.v3.models ตามที่ระบุ
-from linebot.v3.models import QuickReply, QuickReplyButton, MessageAction
+
+# นำเข้าทุกอย่างจาก linebot.v3.messaging ตามที่คุณครูระบุ
+from linebot.v3.messaging import (
+    Configuration, ApiClient, MessagingApi, ReplyMessageRequest, 
+    TextMessage, QuickReply, QuickReplyItem, MessageAction
+)
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from dotenv import load_dotenv
 
@@ -47,30 +50,32 @@ def callback():
 def handle_message(event):
     msg = event.message.text.strip()
     msg_check = msg.lower()
+    
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
         
+        # ปรับการใช้งาน QuickReply ให้สอดคล้องกับการ Import ใหม่
         if "สอนปรับตัวอักษร" in msg_check:
             line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[
                 TextMessage(text="คุณครูใช้มือถือรุ่นไหนคะ?", quick_reply=QuickReply(items=[
-                    QuickReplyButton(action=MessageAction(label="iPhone", text="สอน iPhone Part 1")),
-                    QuickReplyButton(action=MessageAction(label="Android", text="สอน Android Part 1"))
+                    QuickReplyItem(action=MessageAction(label="iPhone", text="สอน iPhone Part 1")),
+                    QuickReplyItem(action=MessageAction(label="Android", text="สอน Android Part 1"))
                 ]))
             ]))
         elif "สอน iphone part 1" in msg_check:
             line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[
                 TextMessage(text="ขั้นที่ 1-2: กดฟันเฟือง เลือก 'จอภาพและความสว่าง'", quick_reply=QuickReply(items=[
-                    QuickReplyButton(action=MessageAction(label="ไปต่อ", text="สอน iPhone Part 2"))
+                    QuickReplyItem(action=MessageAction(label="ไปต่อ", text="สอน iPhone Part 2"))
                 ]))
             ]))
         elif "สอน iphone part 2" in msg_check:
             line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[
                 TextMessage(text="ขั้นที่ 3-4: กด 'ขนาดข้อความ' ลากจุดไปทางขวาค่ะ!", quick_reply=QuickReply(items=[
-                    QuickReplyButton(action=MessageAction(label="เสร็จแล้ว", text="สวัสดี"))
+                    QuickReplyItem(action=MessageAction(label="เสร็จแล้ว", text="สวัสดี"))
                 ]))
             ]))
         elif "สวัสดี" in msg_check:
-            line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="ยินดีด้วยค่ะคุณครู! หากต้องการให้หลานช่วยเรื่องอื่น บอกได้เลยนะคะ")]))
+            line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="เรียบร้อยค่ะคุณครู! หากต้องการให้หลานช่วยเรื่องอื่น บอกได้เลยนะคะ")]))
         elif "ร่างงาน" in msg_check or "เขียน" in msg_check:
             prompt = msg.replace("ร่างงาน", "").replace("เขียน", "").strip()
             line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text=ask_ai_to_write(prompt) if prompt else "พิมพ์รายละเอียดมาได้เลยค่ะ")]))
