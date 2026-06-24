@@ -3,14 +3,11 @@ import os
 import requests
 import google.generativeai as genai
 from flask import Flask, request, abort
-from urllib.parse import urlparse
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
-# รวมการ Import ทุกอย่างจาก linebot.v3.messaging เพื่อป้องกัน ImportError
-from linebot.v3.messaging import (
-    Configuration, ApiClient, MessagingApi, ReplyMessageRequest, 
-    TextMessage, QuickReply, QuickReplyButton, MessageAction
-)
+from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage
+# แก้ไขการเรียกใช้โมดูลให้เป็นมาตรฐานของ SDK v3
+from linebot.v3.messaging.models import QuickReply, QuickReplyButton, MessageAction
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from dotenv import load_dotenv
 
