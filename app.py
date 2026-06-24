@@ -8,7 +8,7 @@ from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (
     Configuration, ApiClient, MessagingApi, ReplyMessageRequest, 
-    TextMessage, ImageMessage, QuickReply, QuickReplyButton, MessageAction
+    TextMessage, QuickReply, QuickReplyButton, MessageAction
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from dotenv import load_dotenv
@@ -72,14 +72,12 @@ def handle_message(event):
             ]))
         elif "สอน iphone part 1" in msg_check:
             line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[
-                ImageMessage(original_content_url="https://i.imgur.com/example1.jpg", preview_image_url="https://i.imgur.com/example1.jpg"),
                 TextMessage(text="ขั้นที่ 1-2: กดฟันเฟือง แล้วเลือก 'จอภาพและความสว่าง'", quick_reply=QuickReply(items=[
                     QuickReplyButton(action=MessageAction(label="ทำเสร็จแล้ว ไปต่อ", text="สอน iPhone Part 2"))
                 ]))
             ]))
         elif "สอน iphone part 2" in msg_check:
             line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[
-                ImageMessage(original_content_url="https://i.imgur.com/example2.jpg", preview_image_url="https://i.imgur.com/example2.jpg"),
                 TextMessage(text="ขั้นที่ 3-4: กด 'ขนาดข้อความ' แล้วลากจุดไปทางขวาค่ะ เก่งมากค่ะ!", quick_reply=QuickReply(items=[
                     QuickReplyButton(action=MessageAction(label="จบขั้นตอน", text="สวัสดี"))
                 ]))
